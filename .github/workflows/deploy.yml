@@ -20,7 +20,7 @@ jobs:
 
       - name: Build and Push Docker image
         run: |
-          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway:latest ./nginx
+          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway:latest .
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway:latest
 
   deploy:
