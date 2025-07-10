@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cheftory-nginx-gateway
+    ports:
+      - "80:80"
+      - "443:443"  # 이후 HTTPS 구성 시 사용
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - cheftory_network
+
+networks:
+  cheftory_network:
+    name: cheftory_network
+    external: true  # FastAPI 쪽에서도 같은 네트워크 이름 사용
