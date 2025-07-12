@@ -71,10 +71,12 @@ jobs:
             echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | sudo docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
             sed -i "s|image: cheftory-nginx-gateway-dev:latest|image: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-dev:latest|g" docker-compose.yml
+            sed -i "s|image: cheftory-proxy-server-dev:latest|image: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-proxy-server-dev:latest|g" docker-compose.yml
 
             sudo docker-compose stop || true
             sudo docker-compose rm -f || true
             sudo docker rmi ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-dev:latest || true
+            sudo docker rmi ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-proxy-server-dev:latest || true
 
             sudo docker-compose pull
             sudo docker-compose up -d

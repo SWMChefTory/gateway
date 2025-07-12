@@ -1,6 +1,14 @@
 version: '3.9'
 
 services:
+  proxy-server:
+    image: cheftory/cheftory-proxy-server-dev:latest
+    container_name: proxy-server
+    ports:
+      - "8080:8080"
+    networks:
+      - cheftory_network
+
   nginx:
     image: cheftory/cheftory-nginx-gateway-dev:latest
     container_name: cheftory-gateway-nginx
@@ -14,6 +22,8 @@ services:
     restart: always
     networks:
       - cheftory_network
+    depends_on:
+      - proxy-server
 
 networks:
   cheftory_network:
