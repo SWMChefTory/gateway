@@ -13,6 +13,24 @@ services:
     networks:
       - cheftory_network
 
+  proxy-server:
+    image: cheftory/cheftory-proxy-server-dev:latest
+    container_name: proxy-server
+    expose:
+      - "8080"
+    restart: always
+    networks:
+      - cheftory_network
+
+  ai-voice-command:
+    image: cheftory/cheftory-ai-voice-command-server-dev:latest
+    container_name: ai-voice-command
+    expose:
+      - "8000"
+    restart: always
+    networks:
+      - cheftory_network
+
 networks:
   cheftory_network:
     name: dev_cheftory_network
