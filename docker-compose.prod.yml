@@ -1,0 +1,19 @@
+services:
+  nginx:
+    image: cheftory/cheftory-nginx-gateway-prod:latest
+    container_name: cheftory-gateway-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./default.conf:/etc/nginx/conf.d/default.conf
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot
+    restart: always
+    networks:
+      - cheftory_network
+
+networks:
+  cheftory_network:
+    name: cheftory_network
+    driver: bridge
