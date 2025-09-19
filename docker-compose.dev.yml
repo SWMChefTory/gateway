@@ -11,9 +11,9 @@ services:
       - /var/www/certbot:/var/www/certbot
     restart: always
     networks:
-      - cheftory_network
+      - dev_cheftory_network
 
 networks:
-  cheftory_network:
-    name: cheftory_network
+  dev_cheftory_network:
+    name: dev_cheftory_network
     driver: bridge
