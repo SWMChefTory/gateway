@@ -3,10 +3,11 @@ name: cheftory nginx gateway CI/CD Pipeline
 on:
   push:
     branches:
-      - dev
+      - main
 
 jobs:
   build:
+    name: Build and Push Docker image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -24,6 +25,7 @@ jobs:
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-dev:latest
 
   deploy:
+    environment: devuction
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -39,23 +41,23 @@ jobs:
           script: |
             mkdir -p cheftory-gateway
 
-      - name: Copy docker-compose.yml to EC2
+      - name: Copy docker-compose.dev.yml to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml"
+          source: "docker-compose.dev.yml"
           target: "/home/ubuntu/cheftory-gateway/"
           strip_components: 0
 
-      - name: Copy default.conf to EC2
+      - name: Copy default.dev.conf to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "default.conf"
+          source: "default.dev.conf"
           target: "/home/ubuntu/cheftory-gateway/"
           strip_components: 0
 
@@ -70,13 +72,13 @@ jobs:
 
             echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | sudo docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
-            sed -i "s|image: cheftory-nginx-gateway-dev:latest|image: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-dev:latest|g" docker-compose.yml
-            sed -i "s|image: cheftory-proxy-server-dev:latest|image: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-proxy-server-dev:latest|g" docker-compose.yml
+            sed -i "s|image: cheftory-nginx-gateway-dev:latest|image: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-dev:latest|g" docker-compose.dev.yml
+            sed -i "s|image: cheftory-proxy-server-dev:latest|image: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-proxy-server-dev:latest|g" docker-compose.dev.yml
 
-            sudo docker-compose stop || true
-            sudo docker-compose rm -f || true
+            sudo docker-compose -f docker-compose.dev.yml stop || true
+            sudo docker-compose -f docker-compose.dev.yml rm -f || true
             sudo docker rmi ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-dev:latest || true
             sudo docker rmi ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-proxy-server-dev:latest || true
 
-            sudo docker-compose pull
-            sudo docker-compose up -d
+            sudo docker-compose -f docker-compose.dev.yml pull
+            sudo docker-compose -f docker-compose.dev.yml up -d
