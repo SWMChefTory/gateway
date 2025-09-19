@@ -3,7 +3,7 @@ name: cheftory nginx gateway CI/CD Pipeline
 on:
   push:
     branches:
-      - main
+      - dev
 
 jobs:
   build:
