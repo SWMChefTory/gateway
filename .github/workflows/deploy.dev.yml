@@ -7,6 +7,7 @@ on:
 
 jobs:
   build:
+    environment: develop
     name: Build and Push Docker image
     runs-on: ubuntu-latest
     steps:
@@ -25,7 +26,7 @@ jobs:
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-dev:latest
 
   deploy:
-    environment: devuction
+    environment: develop
     runs-on: ubuntu-latest
     needs: build
     steps:
