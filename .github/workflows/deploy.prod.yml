@@ -10,9 +10,18 @@ jobs:
     environment: production
     name: Build and Push Docker image
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # 다른 아키텍처(arm64) 빌드를 위한 QEMU 설정
+      - name: Set up QEMU
+        # 멀티 아키텍처 빌드용 Buildx 설정
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -20,10 +29,14 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build and Push Docker image
-        run: |
-          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-prod:latest .
-          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-prod:latest
+      # arm64로 빌드 (t4g)
+      - name: Build and Push Docker image (arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-prod:latest
+          platforms: linux/arm64
 
   deploy:
     environment: production
