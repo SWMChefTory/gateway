@@ -1,4 +1,24 @@
 services:
+  geoipupdate:
+    image: maxmindinc/geoipupdate
+    container_name: cheftory-geoipupdate
+    restart: unless-stopped
+    environment:
+      GEOIPUPDATE_ACCOUNT_ID: ${GEOIPUPDATE_ACCOUNT_ID}
+      GEOIPUPDATE_LICENSE_KEY: ${GEOIPUPDATE_LICENSE_KEY}
+      GEOIPUPDATE_EDITION_IDS: GeoLite2-Country
+      GEOIPUPDATE_DB_DIR: /usr/share/GeoIP
+      GEOIPUPDATE_FREQUENCY: 72
+    volumes:
+      - geoip_db:/usr/share/GeoIP
+    networks:
+      - cheftory_network
+    healthcheck:
+      test: ["CMD", "test", "-f", "/usr/share/GeoIP/GeoLite2-Country.mmdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   nginx:
     image: cheftory/cheftory-nginx-gateway-prod:latest
     container_name: cheftory-gateway-nginx
@@ -7,14 +27,22 @@ services:
       - "443:443"
     volumes:
       - ./default.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot
+      - geoip_db:/usr/share/GeoIP:ro
     environment:
       TZ: "Asia/Seoul"
     restart: always
+    depends_on:
+      geoipupdate:
+        condition: service_healthy
     networks:
       - cheftory_network
 
+volumes:
+  geoip_db:
+  
 networks:
   cheftory_network:
     name: cheftory_network
