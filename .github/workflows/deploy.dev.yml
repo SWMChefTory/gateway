@@ -1,9 +1,10 @@
 name: cheftory nginx gateway CI/CD Pipeline
 
 on:
-  push:
-    branches:
-      - dev
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - dev
 
 jobs:
   build:
@@ -61,6 +62,29 @@ jobs:
           source: "default.dev.conf"
           target: "/home/ubuntu/cheftory-gateway/"
           strip_components: 0
+          
+      - name: Copy nginx.dev.conf to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "nginx.dev.conf"
+          target: "/home/ubuntu/cheftory-gateway/"
+          strip_components: 0
+      
+      - name: Create .env on EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/cheftory-gateway
+            cat <<EOF > .env
+            GEOIPUPDATE_ACCOUNT_ID=${{ secrets.GEOIPUPDATE_ACCOUNT_ID }}
+            GEOIPUPDATE_LICENSE_KEY=${{ secrets.GEOIPUPDATE_LICENSE_KEY }}
+            EOF
 
       - name: SSH to EC2 and deploy
         uses: appleboy/ssh-action@v1
