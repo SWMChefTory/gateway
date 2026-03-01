@@ -15,9 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 다른 아키텍처(arm64) 빌드를 위한 QEMU 설정
       - name: Set up QEMU
-        # 멀티 아키텍처 빌드용 Buildx 설정
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -26,17 +24,16 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      # arm64로 빌드 (t4g)
-      - name: Build and Push Docker image (arm64)
+      - name: Build and Push Docker image (multi-arch)
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-prod:latest
-          platforms: linux/arm64
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cheftory-nginx-gateway-prod:latest
+          platforms: linux/amd64
 
   deploy:
     environment: production
@@ -46,51 +43,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: SSH to EC2 and create folder
+      - name: SSH to VM and create folder
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             mkdir -p cheftory-gateway
 
-      - name: Copy docker-compose.prod.yml to EC2
+      - name: Copy docker-compose.prod.yml to VM
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: "docker-compose.prod.yml"
           target: "/home/ubuntu/cheftory-gateway/"
           strip_components: 0
 
-      - name: Copy default.prod.conf to EC2
+      - name: Copy default.prod.conf to VM
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: "default.prod.conf"
           target: "/home/ubuntu/cheftory-gateway/"
           strip_components: 0
 
-      - name: Copy nginx.prod.conf to EC2
+      - name: Copy nginx.prod.conf to VM
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: "nginx.prod.conf"
           target: "/home/ubuntu/cheftory-gateway/"
           strip_components: 0
 
-      - name: Create .env on EC2
+      - name: Create .env on VM
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             cd ~/cheftory-gateway
             cat <<EOF > .env
@@ -98,24 +95,25 @@ jobs:
             GEOIPUPDATE_LICENSE_KEY=${{ secrets.GEOIPUPDATE_LICENSE_KEY }}
             EOF
 
-      - name: SSH to EC2 and deploy
+      - name: SSH to VM and deploy
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             cd cheftory-gateway
 
-            echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | sudo docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+            echo ${{ secrets.DOCKERHUB_PASSWORD }} | sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
 
-            sed -i "s|image: cheftory-nginx-gateway-prod:latest|image: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-prod:latest|g" docker-compose.prod.yml
-            sed -i "s|image: cheftory-proxy-server-prod:latest|image: ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-proxy-server-prod:latest|g" docker-compose.prod.yml
+            sed -i "s|image: cheftory-nginx-gateway-prod:latest|image: ${{ secrets.DOCKERHUB_USERNAME }}/cheftory-nginx-gateway-prod:latest|g" docker-compose.prod.yml
+            sed -i "s|image: cheftory-proxy-server-prod:latest|image: ${{ secrets.DOCKERHUB_USERNAME }}/cheftory-proxy-server-prod:latest|g" docker-compose.prod.yml
 
-            sudo docker-compose -f docker-compose.prod.yml stop || true
-            sudo docker-compose -f docker-compose.prod.yml rm -f || true
-            sudo docker rmi ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-nginx-gateway-prod:latest || true
-            sudo docker rmi ${{ secrets.DOCKER_HUB_USERNAME }}/cheftory-proxy-server-prod:latest || true
+            # Compose v2 권장: docker compose
+            sudo docker compose -f docker-compose.prod.yml stop || true
+            sudo docker compose -f docker-compose.prod.yml rm -f || true
+            sudo docker rmi ${{ secrets.DOCKERHUB_USERNAME }}/cheftory-nginx-gateway-prod:latest || true
+            sudo docker rmi ${{ secrets.DOCKERHUB_USERNAME }}/cheftory-proxy-server-prod:latest || true
 
-            sudo docker-compose -f docker-compose.prod.yml pull
-            sudo docker-compose -f docker-compose.prod.yml up -d
+            sudo docker compose -f docker-compose.prod.yml pull
+            sudo docker compose -f docker-compose.prod.yml up -d
